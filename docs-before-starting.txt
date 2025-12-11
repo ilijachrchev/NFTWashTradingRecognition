@@ -1,0 +1,54 @@
+nft wash trading - buying and selling the same Non Fungible Token(NFT), controlled by a group of people or same person, between wallets secretly controlled by the same, it creates false sense of demand and inflates the NFT's price and manipulate the perceived value and position in market. It misleads potentiial buyers into paying inflated and fabricated prices.
+
+NFT wash trading is unethical due to its intential deception and market damage.
+
+
+To prevent NFT wash trading, regulators and marketplaces can implement various methods and measures. 
+One approach is to require traders to verify their identity and perform KYC(Know Your Customer - it is a check so we can ensure the customers and that they are who they say are, and do not pose a risk to the bysuness), second approach is AML(Anti Money Laundering - refers to laws and processes, watch how they behave and catch suspicious money movement).
+
+Tosic, Domen and Jernej have excellent article and research on same topic.
+
+
+ideas for DETECTION
+1. DIRECT 
+if the NFT is reselled by the same wallets or tightly connected group of wallets, it is most likely wash trading so:
+	- For every NFT token, it has some ID, fetch the trade history,
+	- For each trade, check it,
+	- If the NFT is sold back to the original seller, raise a FLAG
+	
+	- Maybe apply time constraints(doesn't have to mean wash trading)
+		- if the repurchase/resell of an NFT happens within some hours/days, that is suspicious
+
+	- Compare prices of each sale ??
+		- huge spikes could be potential flag that it is wash trading
+
+2. Wallet Cluster Detection - analysis techinque that identifies and groups multiple wallet addresses likely controlled by same individual or group.
+	- Knowing that the transactions are pseudonympus, with this method:
+		- deanonymizes the data, by analyzing transaction patterns to build a complete profile of user's activity.
+	- Through GRAPH
+		- nodes --> wallets
+		- edges --> transactions
+	- Detect clusters using algorithms like
+		- connected components
+		- method  "LOUVAIN" -- a powerful algotiyhm for finding communities in large networks by optimizing modularity.
+	- Inside each cluster, we are going to look for:
+		- Repeated trades - between same group
+		- Cycles - can be of form of triangles, squares? myb something else
+	- Flag the clusters
+		- wallet A --> B, B --> C, C --> A, bcs of suspicious activity
+		- repeatedly trades only among themselves
+	- Detect dense repeats
+		- A --> B --> A
+		- A --> B --> C --> A
+		- or even among only 2 A <--> B
+
+Copied Linkability Network, from Tosic, Domen and Jernej Research
+	
+The Linkability network is a directed weighted graph denoted by Gln = (V', E'), derived from the Ethereum Transaction Network Geth = (V, E), where:
+	- V' subset of V, is the set of vertices, each representing a unique account that has owned an NFT from a specific collection at any point in time.
+	- E'  is the set of directed edges, with each edge (v, u) in E' representing the shortest path of ETH currency transfer from v to u in the Ethereum Transaction Network.
+	- w :E' --> 1, 2, ... , d is a weight function that assigns to each edge (v, u) a weight equal to the length of the shortest path from v to u in the Ethereum Transaction Network.
+
+
+
+	

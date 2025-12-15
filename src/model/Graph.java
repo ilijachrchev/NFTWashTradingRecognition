@@ -25,4 +25,15 @@ public class Graph {
         adjacencyList.computeIfAbsent(to, k -> new ArrayList<>()).add(from);
         edgeCount++;
     }
+
+    public List<Integer> getConnected(int nodeId) {
+        return adjacencyList.getOrDefault(nodeId, new ArrayList<>());
+    }
+
+    public int nodeCount() {
+        return adjacencyList.size();
+    }
+    public long edgeCount() {
+        return edgeCount;
+    }
 }

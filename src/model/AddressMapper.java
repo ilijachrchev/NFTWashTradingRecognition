@@ -10,7 +10,7 @@ public class AddressMapper {
     private int nextId;
 
 
-    public AddressMapper(Map<String, Integer> addressToId, Map<Integer, String> idToAddress) {
+    public AddressMapper() {
         this.addressToId = new HashMap<>(16_000_000);
         this.idToAddress = new HashMap<>(16_000_000);
         this.nextId = 0;
@@ -36,7 +36,7 @@ public class AddressMapper {
         int newId = nextId++;
 
         addressToId.put(normalized, newId);
-        idToAddress.put(newId, address);
+        idToAddress.put(newId, normalized);
         return newId;
     }
 

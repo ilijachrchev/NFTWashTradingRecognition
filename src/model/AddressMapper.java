@@ -11,8 +11,8 @@ public class AddressMapper {
 
 
     public AddressMapper() {
-        this.addressToId = new HashMap<>(16_000_000);
-        this.idToAddress = new HashMap<>(16_000_000);
+        this.addressToId = new HashMap<>();
+        this.idToAddress = new HashMap<>();
         this.nextId = 0;
     }
 

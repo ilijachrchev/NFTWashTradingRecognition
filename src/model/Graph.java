@@ -11,7 +11,7 @@ public class Graph {
     private long edgeCount;
 
     public Graph() {
-        this.adjacencyList = new HashMap<>(16_000_000);
+        this.adjacencyList = new HashMap<>();
         this.edgeCount = 0;
     }
 

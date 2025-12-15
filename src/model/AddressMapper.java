@@ -39,4 +39,15 @@ public class AddressMapper {
         idToAddress.put(newId, address);
         return newId;
     }
+
+    public String getAddress(int id) {
+        return idToAddress.get(id);
+    }
+
+    public boolean containsAddress(String address) {
+        if (address == null || address.isEmpty()) {
+            return false;
+        }
+        return addressToId.containsKey(address.toLowerCase());
+    }
 }

@@ -24,8 +24,7 @@ public class AddressMapper {
         }
 
         //addr are case insensitive
-        String normalized = address.toLowerCase();
-
+        String normalized = address.trim().toLowerCase();
 
         // check the addr
         Integer existingId = addressToId.get(normalized);

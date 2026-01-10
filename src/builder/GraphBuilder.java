@@ -33,10 +33,10 @@ public class GraphBuilder {
 
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length < 2) continue;
+                if (parts.length < 7) continue;
 
-                String from = parts[0].trim();
-                String to = parts[1].trim();
+                String from = parts[5].trim();
+                String to = parts[6].trim();
 
                 if (isBlackListed(from) || isBlackListed(to)) {
                     skipped++;
@@ -54,6 +54,8 @@ public class GraphBuilder {
                 }
             }
         }
+        Logger.success("ETN built: " + graph.nodeCount() + " nodes, " + graph.edgeCount() + " edges");
+        Logger.info("Skipped " + skipped + " blacklisted transactions!");
     }
 
     public boolean isBlackListed(String address) {

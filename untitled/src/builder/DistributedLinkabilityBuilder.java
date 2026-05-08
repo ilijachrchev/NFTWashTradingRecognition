@@ -3,6 +3,10 @@ package builder;
 import model.Graph;
 import utils.Logger;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
 public class DistributedLinkabilityBuilder {
 
     private final Graph etnGraph;
@@ -22,7 +26,7 @@ public class DistributedLinkabilityBuilder {
     }
 
     // run bfs, save the edges and return how many links found for each wieght
-    public long[] buildLocalPart(String tempFile) {
+    public long[] buildLocalPart(String tempFile) throws IOException {
         Logger.info("[rank " + rank + "] Building DISTRIBUTED linkability network with depth= " + maxDepth) ;
 
         boolean[] isTrader = new boolean[nodeCount];
@@ -34,5 +38,71 @@ public class DistributedLinkabilityBuilder {
 
         long[] localLinksByWeight = new long[nodeCount];
         long localTotal = 0;
+        int[] seen  = new int[nodeCount];
+        int[] distance = new int[nodeCount];
+        int[] queue = new int[Math.max(16, nodeCount / 64)];
+        int bfsId = 1;
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+            if (rank == 0) {
+                writer.write("from,to,weight\n");
+            }
+
+            int processed = 0;
+            int myShare = 0;
+
+            for (int index = rank; index < allTraders.length; index += size) {
+                myShare++;
+
+                int head = 0;
+                int tail = 0;
+
+                if (tail == queue.length) {
+                }
+
+                while (head < tail) {
+                    int current = queue[head++];
+                    int currentDistance = distance[current];
+
+                    if (currentDistance >= maxDepth) {
+                        continue;
+                    }
+
+                    Graph.IntVec neigh = etnGraph.getConnected(current);
+                    for (int i = 0; i < neigh.size(); i++) {
+                        int neighId = neigh.get(i);
+                        if (neighId < 0 || neighId >= nodeCount) {
+                            continue;
+                        }
+
+                        if (seen[neighId] == bfsId) {
+                            continue;
+                        }
+
+                        int nextDistance = currentDistance + 1;
+                        seen[neighId] = bfsId;
+                        distance[neighId] = nextDistance;
+
+                        if (tail == queue.length) {}
+
+
+                        if (isTrader[neighId] && neighId != ) {
+                            writer.write(neighId + ", " + nextDistance + ", " + "\n");
+
+                            localTotal++;
+                            localLinksByWeight[nextDistance]++;
+                        }
+                    }
+                }
+
+                processed++;
+                if (processed %4000 == 0) {
+                    Logger.debug("[rank " + rank + "] processed " + processed + ", found " + localTotal + " links." ) ;
+                }
+            }
+
+            Logger.info("[rank " + rank + "] finished: " + myShare + " traders processed, " + localTotal + " local links." ) ;
+        }
+        return localLinksByWeight;
     }
 }

@@ -53,12 +53,20 @@ public class DistributedLinkabilityBuilder {
 
             for (int index = rank; index < allTraders.length; index += size) {
                 myShare++;
-
+                int source = allTraders[index];
+                if (source < 0 || source >= nodeCount) {
+                    continue;
+                }
                 int head = 0;
                 int tail = 0;
 
                 if (tail == queue.length) {
+                    queue = grow(queue);
                 }
+
+                queue[tail++] = source;
+                seen[source] = bfsId;
+                distance[source] = 0;
 
                 while (head < tail) {
                     int current = queue[head++];
@@ -83,10 +91,13 @@ public class DistributedLinkabilityBuilder {
                         seen[neighId] = bfsId;
                         distance[neighId] = nextDistance;
 
-                        if (tail == queue.length) {}
+                        if (tail == queue.length) {
+                            queue = grow(queue);
+                        }
+                        queue[tail++] = neighId;
 
 
-                        if (isTrader[neighId] && neighId != ) {
+                        if (isTrader[neighId] && neighId != source) {
                             writer.write(neighId + ", " + nextDistance + ", " + "\n");
 
                             localTotal++;
@@ -99,10 +110,24 @@ public class DistributedLinkabilityBuilder {
                 if (processed %4000 == 0) {
                     Logger.debug("[rank " + rank + "] processed " + processed + ", found " + localTotal + " links." ) ;
                 }
+
+                bfsId++;
+                if (bfsId == Integer.MAX_VALUE) {
+                    for (int i = 0; i < nodeCount; i++) {
+                        seen[i] = 0;
+                    }
+                    bfsId = 1;
+                }
             }
 
             Logger.info("[rank " + rank + "] finished: " + myShare + " traders processed, " + localTotal + " local links." ) ;
         }
         return localLinksByWeight;
+    }
+
+    private static int[] grow(int[] array) {
+        int[] bigger = new int[array.length * 2];
+        System.arraycopy(array, 0, bigger, 0, array.length);
+        return bigger;
     }
 }

@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class DistributedMain {
 
-    private static final int MAX_DEPTH = 5;
+    private static final int MAX_DEPTH = 9;
     private static final String ETN_FILE = "untitled/prog3ETNsample.csv";
     private static final String NFT_FILE = "untitled/boredapeyachtclub.csv";
     private static final String BLACKLIST_FOLDER = "untitled/blacklist";

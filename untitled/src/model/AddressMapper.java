@@ -52,4 +52,9 @@ public class AddressMapper {
         }
         return addressToId.containsKey(address.toLowerCase());
     }
+
+    public void clear() {
+        addressToId.clear();
+        idToAddress.clear();
+    }
 }

@@ -36,7 +36,7 @@ public class DistributedLinkabilityBuilder {
             }
         }
 
-        long[] localLinksByWeight = new long[nodeCount];
+        long[] localLinksByWeight = new long[maxDepth + 1];
         long localTotal = 0;
         int[] seen  = new int[nodeCount];
         int[] distance = new int[nodeCount];
@@ -98,7 +98,7 @@ public class DistributedLinkabilityBuilder {
 
 
                         if (isTrader[neighId] && neighId != source) {
-                            writer.write(neighId + ", " + nextDistance + ", " + "\n");
+                            writer.write(source + "," + neighId + "," + nextDistance + "\n");
 
                             localTotal++;
                             localLinksByWeight[nextDistance]++;
@@ -107,7 +107,7 @@ public class DistributedLinkabilityBuilder {
                 }
 
                 processed++;
-                if (processed %4000 == 0) {
+                if (processed % 4000 == 0) {
                     Logger.debug("[rank " + rank + "] processed " + processed + ", found " + localTotal + " links." ) ;
                 }
 

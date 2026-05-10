@@ -1,22 +1,22 @@
+import builder.DistributedLinkabilityBuilder;
 import builder.GraphBuilder;
 import builder.NFTTraderLoader;
-import com.sun.source.doctree.SeeTree;
 import model.Graph;
 import mpi.MPI;
 import utils.BlacklistReader;
 import utils.Logger;
-
 import java.io.IOException;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 
 public class DistributedMain {
 
-    private static final int MAX_DEPTH = 3;
+    private static final int MAX_DEPTH = 5;
     private static final String ETN_FILE = "untitled/prog3ETNsample.csv";
     private static final String NFT_FILE = "untitled/boredapeyachtclub.csv";
     private static final String BLACKLIST_FOLDER = "untitled/blacklist";
-    private static final String OUTPUT_FILE = "untitled/output.csv";
+    private static final String OUTPUT_FILE = "untitled/output_distributed.csv";
 
     public static void main(String[] args) throws IOException {
         MPI.Init(args);
@@ -24,7 +24,9 @@ public class DistributedMain {
         int rank = MPI.COMM_WORLD.Rank();
         int size = MPI.COMM_WORLD.Size();
 
-        String[] userArgs = Arrays.copyOfRange(args, 3, args.length);
+        long totalStartTime = System.currentTimeMillis();
+
+        String[] userArgs = args;
 
         int maxDepth;
         String etnFile, nftFile, blacklistFolder, outputFile;
@@ -63,15 +65,78 @@ public class DistributedMain {
         NFTTraderLoader nftLoader = new NFTTraderLoader(blacklist, builder.getAddressMapper());
         Set<Integer> traderSet = nftLoader.loadTraders(nftFile);
         int[] traders = traderSet.stream().mapToInt(Integer::intValue).sorted().toArray();
+        int nodeCount = builder.getAddressMapper().size();
 
-        System.out.println("[rank " + rank + "] nodes= " + builder.getAddressMapper().size() + " edges= " + graph.edgeCount() + " traders= " + traders.length);
-
-        MPI.COMM_WORLD.Barrier();
+        // memory prob without this
+        builder.getAddressMapper().clear(); // after graph and trader ids are built, i dont need
+        blacklist.clear(); // blacklist is also not needed after graph and nft trader loading
 
         if (rank == 0) {
-            Logger.success("All ranks loaded daya successfully");
+            Logger.success("Graph loaded: " + nodeCount + " nodes, " + graph.edgeCount() + " edges, " + traders.length + " traders");
         }
 
+        MPI.COMM_WORLD.Barrier();
+        double tStart = MPI.Wtime();
+        long tStartMs = System.currentTimeMillis();
+
+        String tempFile = outputFile + ".rank" + rank + ".tmp";
+        DistributedLinkabilityBuilder distributedBuilder = new DistributedLinkabilityBuilder(graph, traders, maxDepth, nodeCount, rank, size);
+        long[] localCounts = distributedBuilder.buildLocalPart(tempFile);
+
+        MPI.COMM_WORLD.Barrier();
+        double tEnd = MPI.Wtime();
+        long tEndMs = System.currentTimeMillis();
+
+        long[] globalCounts = new long[maxDepth + 1];
+        MPI.COMM_WORLD.Reduce(localCounts, 0, globalCounts, 0, maxDepth + 1, MPI.LONG, MPI.SUM, 0);
+
+        if (rank == 0) {
+            mergeFiles(outputFile, size);
+
+            //memory check
+            long maxMemory = Runtime.getRuntime().maxMemory() / 1024 / 1024;
+            Logger.info("Max JVM heap: " + maxMemory + " MB");
+
+            long total = 0;
+            StringBuilder distance = new StringBuilder("Link by weight:");
+            for (int i = 1; i <= maxDepth; i++) {
+                if (i > 1) {
+                    distance.append(",");
+                }
+                distance.append(" w=").append(i).append(": ").append(globalCounts[i]);
+                total += globalCounts[i];
+            }
+
+            Logger.info(distance.toString());
+            Logger.success("Total links: " + total);
+            Logger.success("Output written to: " + outputFile);
+
+            long totalTime = System.currentTimeMillis() - totalStartTime;
+            Logger.success("TOTAL RUNTIME: " + totalTime + " ms (" + (totalTime / 1000.0) + " seconds)");
+
+            long bfsMs = tEndMs - tStartMs;
+            Logger.success("BFS computation runtime: " + bfsMs + " ms");
+        }
+
+
         MPI.Finalize();
+    }
+
+    public static void mergeFiles(String outputFile, int size) throws IOException {
+        Path out = Path.of(outputFile);
+        Files.deleteIfExists(out);
+
+        try (var output = Files.newOutputStream(out)){
+            for (int i = 0; i <size; i++) {
+                Path temp = Path.of(outputFile + ".rank" + i + ".tmp");
+
+                if (!Files.exists(temp)) {
+                    continue;
+                }
+
+                Files.copy(temp, output);
+                Files.delete(temp);
+            }
+        }
     }
 }

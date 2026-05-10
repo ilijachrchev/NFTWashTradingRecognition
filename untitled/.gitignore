@@ -1,0 +1,14 @@
+# IDE
+.idea/
+*.iml
+
+# Build output
+out/
+target/
+*.class
+
+# Data files
+*.csv
+
+# Allow blacklist JSONs (we DO want those)
+!blacklist/*.json

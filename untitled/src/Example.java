@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class Example {
 
-    private static final int MAX_DEPTH = 8;
+    private static final int MAX_DEPTH = 9;
     private static final String ETN_FILE = "prog3ETNsample.csv";
     private static final String NFT_FILE = "boredapeyachtclub.csv";
     private static final String BLACKLIST_FOLDER = "blacklist";

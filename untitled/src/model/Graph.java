@@ -17,6 +17,7 @@ public class Graph {
     public void addEdge(int from, int to) {
         if (from < 0 || to < 0) return;
 
+        // llm introduced me to this java idiom
         adj.computeIfAbsent(from, k -> new IntVec()).add(to);
         edgeCount++;
     }
@@ -43,6 +44,7 @@ public class Graph {
                 continue;
             }
 
+            // sort for easier detection
             Arrays.sort(v.a, 0, v.size);
 
             int write = 1;
@@ -58,7 +60,7 @@ public class Graph {
     }
 
     public static final class IntVec {
-        public static final IntVec EMPTY = new IntVec(0, true);
+        public static final IntVec EMPTY = new IntVec(0, true); //empty neighbours list
 
         int[] a;
         int size;
@@ -70,6 +72,7 @@ public class Graph {
             this.fixedEmpty = false;
         }
 
+        // called only build EMPTY
         private IntVec(int cap, boolean fixedEmpty) {
             this.a = new int[cap];
             this.size = 0;
@@ -83,7 +86,8 @@ public class Graph {
                 System.arraycopy(a, 0, b, 0, a.length);
                 a = b;
             }
-            a[size++] = x;
+            a[size] = x;
+            size++;
         }
 
         public int size() {

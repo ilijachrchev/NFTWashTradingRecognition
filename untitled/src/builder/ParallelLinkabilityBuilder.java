@@ -48,6 +48,7 @@ public class ParallelLinkabilityBuilder {
             linksByWeight[i] = new AtomicLong(0);
         }
 
+        // llm idea for how to stop writerThread and capacity of writingQueue
         BlockingQueue<String> writingQueue = new ArrayBlockingQueue<>(8192);
         final String POISON = "__POISON__";
 
@@ -81,6 +82,7 @@ public class ParallelLinkabilityBuilder {
         for (int source : traderIds) {
             final int src = source;
 
+            //building local output
             pool.submit(() -> {
                 if (src < 0 || src >= nodeCount) {
                     return;
@@ -142,7 +144,7 @@ public class ParallelLinkabilityBuilder {
                 }
                 if (localOutput.length() > 0) {
                     try {
-                        writingQueue.put(localOutput.toString());
+                        writingQueue.put(localOutput.toString()); // append as soon as a string arrives
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         return;
@@ -164,14 +166,15 @@ public class ParallelLinkabilityBuilder {
         }
 
         pool.shutdown();
-        boolean finished = pool.awaitTermination(365, TimeUnit.DAYS);
 
+        // wait up to 5h for all threads to finish(random time, just to have fallback)
+        boolean finished = pool.awaitTermination(5, TimeUnit.HOURS);
         if (!finished) {
             pool.shutdownNow();
             throw new RuntimeException("Worker pool did not terminate cleanly.");
         }
 
-        writingQueue.put(POISON);
+        writingQueue.put(POISON); // end the writer thread
         writerThread.join();
 
         Logger.debug("Processed " + totalTraders + " / " + totalTraders + " traders, found " + totalLinks.get() + " links");

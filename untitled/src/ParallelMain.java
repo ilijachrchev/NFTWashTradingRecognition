@@ -84,7 +84,6 @@ public class ParallelMain {
             long nftLoadTime = System.currentTimeMillis() - startTime;
             Logger.info("NFT loading time: " + nftLoadTime + " ms");
 
-            startTime = System.currentTimeMillis();
             int nodeCount = builder.getAddressMapper().size();
             ParallelLinkabilityBuilder linkBuilder = new ParallelLinkabilityBuilder(graph, traders, maxDepth, nodeCount);
             linkBuilder.buildLinkabilityNetwork(outputFile);

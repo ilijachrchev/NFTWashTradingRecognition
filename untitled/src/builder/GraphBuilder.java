@@ -58,10 +58,9 @@ public class GraphBuilder {
             }
             Logger.info("Added " + added + " edges, skipped " + skipped);
         }
-        Logger.info("Skipped " + skipped + " blacklisted transactions!");
     }
 
-    public boolean isBlackListed(String address) {
+    private boolean isBlackListed(String address) {
         if (address == null || address.isEmpty()) return true;
         return blacklist.contains(address.toLowerCase());
     }

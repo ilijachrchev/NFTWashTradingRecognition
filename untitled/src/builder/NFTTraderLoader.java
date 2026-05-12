@@ -24,7 +24,6 @@ public class NFTTraderLoader {
         Logger.info("Loading NFT traders from: " + nftFilePath);
 
         Set<Integer> traderIds = new HashSet<>();
-        long totalRecords = 0;
         long skippedNull = 0;
         long skippedBlacklist = 0;
 
@@ -35,12 +34,11 @@ public class NFTTraderLoader {
 
                 if (parts.length < 6) continue;
 
-                String from = parts[4].trim();
-                String to = parts[5].trim();
+                String from = parts[4].trim(); // 4 is sender
+                String to = parts[5].trim().toLowerCase(); // 5 is receiver
 
-                totalRecords++;
 
-                if (!to.equalsIgnoreCase(NULL_ADDRESS)) {
+                if (!to.equals(NULL_ADDRESS)) {
                     if (!isBlacklisted(from)) {
                         int fromId = addressMapper.getOrCreateId(from);
                         traderIds.add(fromId);
@@ -51,7 +49,7 @@ public class NFTTraderLoader {
                     skippedNull++;
                 }
 
-                if (!to.equalsIgnoreCase(NULL_ADDRESS)) {
+                if (!to.equals(NULL_ADDRESS)) {
                     if (!isBlacklisted(to)) {
                         int toId = addressMapper.getOrCreateId(to);
                         traderIds.add(toId);

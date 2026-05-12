@@ -1,1 +1,16 @@
+# IDE
+.idea/
+*.iml
+
+# Build output
 out/
+target/
+*.class
+
+# Data files
+*.csv
+data/
+output/
+
+# Keep blacklist JSON files
+!blacklist/*.json

@@ -20,7 +20,7 @@ public class BlacklistReader {
             return blacklist;
         }
 
-        // getting all json files
+        // get all json files
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
 
         if (files == null || files.length == 0) {
@@ -51,6 +51,5 @@ public class BlacklistReader {
                 blacklist.add(trimmed.toLowerCase());
             }
         }
-
     }
 }

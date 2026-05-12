@@ -1,6 +1,6 @@
 import builder.GraphBuilder;
-import builder.LinkabilityBuilder;
 import builder.NFTTraderLoader;
+import builder.ParallelLinkabilityBuilder;
 import model.Graph;
 import utils.BlacklistReader;
 import utils.Logger;
@@ -8,13 +8,14 @@ import utils.Logger;
 import java.io.IOException;
 import java.util.Set;
 
-public class SequentialMain {
 
-    private static final int MAX_DEPTH = 3;
-    private static final String ETN_FILE = "untitled/prog3ETNsample.csv";
-    private static final String NFT_FILE = "untitled/boredapeyachtclub.csv";
-    private static final String BLACKLIST_FOLDER = "untitled/blacklist";
-    private static final String OUTPUT_FILE = "untitled/output.csv";
+public class ParallelMain {
+
+    private static final int MAX_DEPTH = 9;
+    private static final String ETN_FILE = "data/prog3ETNsample.csv";
+    private static final String NFT_FILE = "data/boredapeyachtclub.csv";
+    private static final String BLACKLIST_FOLDER = "blacklist";
+    private static final String OUTPUT_FILE = "data/output_parallel.csv";
 
     public static void main(String[] args) {
 
@@ -50,13 +51,14 @@ public class SequentialMain {
             System.exit(1);
         }
 
-        Logger.info("==================== Wash Trading Detection - Sequential ====================");
+        Logger.info("==================== Wash Trading Detection - Parallel ====================");
+        Logger.info("Threads: " + Runtime.getRuntime().availableProcessors());
         Logger.info("Max depth: " + maxDepth);
         Logger.info("ETN file: " + etnFile);
         Logger.info("NFT file: " + nftFile);
         Logger.info("Blacklist folder: " + blacklistFolder);
         Logger.info("Output file: " + outputFile);
-        Logger.info("==============================================================================");
+        Logger.info("=============================================================================");
 
         long totalStartTime = System.currentTimeMillis();
 
@@ -74,29 +76,24 @@ public class SequentialMain {
 
             Graph graph = builder.getGraph();
             graph.duplicateEdges();
-            Logger.success("ETN graph: " + builder.getAddressMapper().size() + " nodes, " + graph.edgeCount() + " edges");
+            Logger.success("ETN graph: " + builder.getAddressMapper().size() + " nodes, and " + graph.edgeCount() + " edges");
 
             startTime = System.currentTimeMillis();
             NFTTraderLoader nftLoader = new NFTTraderLoader(blacklist, builder.getAddressMapper());
             Set<Integer> traders = nftLoader.loadTraders(nftFile);
             long nftLoadTime = System.currentTimeMillis() - startTime;
-            Logger.info("NFT trader loading time: " + nftLoadTime + " ms");
-
-            startTime = System.currentTimeMillis();
+            Logger.info("NFT loading time: " + nftLoadTime + " ms");
 
             int nodeCount = builder.getAddressMapper().size();
-            LinkabilityBuilder linkBuilder = new LinkabilityBuilder(graph, traders, maxDepth, nodeCount);
+            ParallelLinkabilityBuilder linkBuilder = new ParallelLinkabilityBuilder(graph, traders, maxDepth, nodeCount);
             linkBuilder.buildLinkabilityNetwork(outputFile);
-            long linkabilityTime = System.currentTimeMillis() - startTime;
-            Logger.info("Linkability network build time: " + linkabilityTime + " ms");
-
             long totalTime = System.currentTimeMillis() - totalStartTime;
             Logger.success("===========================================");
             Logger.success("TOTAL RUNTIME: " + totalTime + " ms (" + (totalTime / 1000.0) + " seconds)");
             Logger.success("Results saved to: " + outputFile);
-            Logger.success("===========================================");
+            Logger.success("==========================================");
 
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             Logger.error("Failed: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);

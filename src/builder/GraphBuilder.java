@@ -7,7 +7,6 @@ import utils.Logger;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
 
 public class GraphBuilder {
@@ -46,19 +45,22 @@ public class GraphBuilder {
                 int fromId = addressMapper.getOrCreateId(from);
                 int toId = addressMapper.getOrCreateId(to);
 
+                if (fromId == toId) {
+                    continue;
+                }
+
                 graph.addEdge(fromId, toId);
                 added++;
 
-                if (added % 1_000_000 == 0) {
+                if (added % 2_500_000 == 0) {
                     Logger.info("Added " + added + " edges, skipped " + skipped);
                 }
             }
+            Logger.info("Added " + added + " edges, skipped " + skipped);
         }
-        Logger.success("ETN built: " + graph.nodeCount() + " nodes, " + graph.edgeCount() + " edges");
-        Logger.info("Skipped " + skipped + " blacklisted transactions!");
     }
 
-    public boolean isBlackListed(String address) {
+    private boolean isBlackListed(String address) {
         if (address == null || address.isEmpty()) return true;
         return blacklist.contains(address.toLowerCase());
     }

@@ -18,7 +18,6 @@ public class AddressMapper {
 
     public int getOrCreateId(String address) {
 
-        // handle wrong addresses
         if(address == null || address.isEmpty()) {
             return -1;
         }
@@ -29,7 +28,7 @@ public class AddressMapper {
         // check the addr
         Integer existingId = addressToId.get(normalized);
         if(existingId != null) {
-            return existingId;          //reuse same addr for existing
+            return existingId;
         }
 
         int newId = nextId++;
@@ -43,10 +42,19 @@ public class AddressMapper {
         return idToAddress.get(id);
     }
 
+    public int size() {
+        return nextId;
+    }
+
     public boolean containsAddress(String address) {
         if (address == null || address.isEmpty()) {
             return false;
         }
         return addressToId.containsKey(address.toLowerCase());
+    }
+
+    public void clear() {
+        addressToId.clear();
+        idToAddress.clear();
     }
 }

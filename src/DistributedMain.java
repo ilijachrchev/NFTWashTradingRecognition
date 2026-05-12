@@ -12,11 +12,11 @@ import java.util.Set;
 
 public class DistributedMain {
 
-    private static final int MAX_DEPTH = 9;
-    private static final String ETN_FILE = "untitled/prog3ETNsample.csv";
-    private static final String NFT_FILE = "untitled/boredapeyachtclub.csv";
-    private static final String BLACKLIST_FOLDER = "untitled/blacklist";
-    private static final String OUTPUT_FILE = "untitled/output_distributed.csv";
+    private static final int MAX_DEPTH = 2;
+    private static final String ETN_FILE = "data/prog3ETNsample.csv";
+    private static final String NFT_FILE = "data/boredapeyachtclub.csv";
+    private static final String BLACKLIST_FOLDER = "blacklist";
+    private static final String OUTPUT_FILE = "data/output_distributed.csv";
 
     public static void main(String[] args) throws IOException {
         MPI.Init(args);

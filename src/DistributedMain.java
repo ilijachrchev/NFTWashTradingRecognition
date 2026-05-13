@@ -13,20 +13,20 @@ import java.util.Set;
 public class DistributedMain {
 
     private static final int MAX_DEPTH = 2;
-    private static final String ETN_FILE = "data/prog3ETNsample.csv";
-    private static final String NFT_FILE = "data/boredapeyachtclub.csv";
-    private static final String BLACKLIST_FOLDER = "blacklist";
-    private static final String OUTPUT_FILE = "data/output_distributed.csv";
+    private static final String ETN_FILE = "";
+    private static final String NFT_FILE = "";
+    private static final String BLACKLIST_FOLDER = "";
+    private static final String OUTPUT_FILE = "";
+    // or through example. 3 data/prog3ETNsample.csv data/boredapeyachtclub.csv blacklist data/output_distributed.csv
 
     public static void main(String[] args) throws IOException {
-        MPI.Init(args);
+       String[] userArgs = MPI.Init(args);
 
         int rank = MPI.COMM_WORLD.Rank();
         int size = MPI.COMM_WORLD.Size();
 
         long totalStartTime = System.currentTimeMillis();
 
-        String[] userArgs = args;
 
         int maxDepth;
         String etnFile, nftFile, blacklistFolder, outputFile;

@@ -15,6 +15,7 @@ public class SequentialMain {
     private static final String NFT_FILE = "data/boredapeyachtclub.csv";
     private static final String BLACKLIST_FOLDER = "blacklist";
     private static final String OUTPUT_FILE = "data/output.csv";
+    // or through example. 3 data/prog3ETNsample.csv data/boredapeyachtclub.csv blacklist data/output_distributed.csv
 
     public static void main(String[] args) {
 

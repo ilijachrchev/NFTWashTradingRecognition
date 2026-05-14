@@ -52,34 +52,68 @@ public class DistributedMain {
             Logger.info("NFT file: " + nftFile);
             Logger.info("Blacklist folder: " + blacklistFolder);
             Logger.info("Output file: " + outputFile);
-            Logger.info("==============================================================================");
+            Logger.info("=============================================================================");
         }
 
-        Set<String> blacklist = BlacklistReader.loadBlacklist(blacklistFolder);
-
-        GraphBuilder builder = new GraphBuilder(blacklist);
-        builder.buildFromETN(etnFile);
-        Graph graph = builder.getGraph();
-        graph.duplicateEdges();
-
-        NFTTraderLoader nftLoader = new NFTTraderLoader(blacklist, builder.getAddressMapper());
-        Set<Integer> traderSet = nftLoader.loadTraders(nftFile);
-        int[] traders = traderSet.stream().mapToInt(Integer::intValue).sorted().toArray();
-        int nodeCount = builder.getAddressMapper().size();
-
-        // memory prob without this
-        builder.getAddressMapper().clear(); // after graph and trader ids are built, i dont need
-        blacklist.clear(); // blacklist is also not needed after graph and nft trader loading
+        Graph graph;
+        int[] traders;
+        int nodeCount;
 
         if (rank == 0) {
+            Set<String> blacklist = BlacklistReader.loadBlacklist(blacklistFolder);
+
+            GraphBuilder builder = new GraphBuilder(blacklist);
+            builder.buildFromETN(etnFile);
+            graph = builder.getGraph();
+            graph.duplicateEdges();
+
+            NFTTraderLoader nftLoader = new NFTTraderLoader(blacklist, builder.getAddressMapper());
+            Set<Integer> traderSet = nftLoader.loadTraders(nftFile);
+            traders = traderSet.stream().mapToInt(Integer::intValue).sorted().toArray();
+            nodeCount = builder.getAddressMapper().size();
+
+            // memory prob without this
+            builder.getAddressMapper().clear(); // after graph and trader ids are built, i dont need
+            blacklist.clear(); // blacklist is also not needed after graph and nft trader loading
+
+            int[][] flat =  flattenGraph(graph, nodeCount);
+            int[] offsets = flat[0];
+            int[] neighbors = flat[1];
+
+            int[] sizes = new int[3];
+            sizes[0] = nodeCount;
+            sizes[1] = neighbors.length;
+            sizes[2] = traders.length;
+
+            MPI.COMM_WORLD.Bcast(sizes, 0, 3, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(offsets, 0, offsets.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(neighbors, 0, neighbors.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(traders, 0, traders.length, MPI.INT, 0);
+
             Logger.success("Graph loaded: " + nodeCount + " nodes, " + graph.edgeCount() + " edges, " + traders.length + " traders");
+        } else {
+            int[] sizes = new int[3];
+            MPI.COMM_WORLD.Bcast(sizes, 0, 3, MPI.INT, 0);
+            nodeCount = sizes[0];
+            int edgeCount = sizes[1];
+            int traderCount = sizes[2];
+
+            int[] offsets = new int[nodeCount + 1];
+            int[] neighbors = new int[edgeCount];
+            traders = new int[traderCount];
+
+            MPI.COMM_WORLD.Bcast(offsets, 0, offsets.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(neighbors, 0, neighbors.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(traders, 0, traders.length, MPI.INT, 0);
+
+            graph = rebuildGraph(offsets, neighbors, nodeCount);
         }
 
         MPI.COMM_WORLD.Barrier();
         double tStart = MPI.Wtime();
         long tStartMs = System.currentTimeMillis();
 
-        String tempFile = outputFile + ".rank" + rank + ".tmp";
+        String tempFile = outputFile + ".rank" + rank + ".tmp"; // each rank gets its own temp file named by rank
         DistributedLinkabilityBuilder distributedBuilder = new DistributedLinkabilityBuilder(graph, traders, maxDepth, nodeCount, rank, size);
         long[] localCounts = distributedBuilder.buildLocalPart(tempFile);
 
@@ -92,10 +126,6 @@ public class DistributedMain {
 
         if (rank == 0) {
             mergeFiles(outputFile, size);
-
-            //memory check
-            long maxMemory = Runtime.getRuntime().maxMemory() / 1024 / 1024;
-            Logger.info("Max JVM heap: " + maxMemory + " MB");
 
             long total = 0;
             StringBuilder distance = new StringBuilder("Link by weight:");
@@ -138,5 +168,40 @@ public class DistributedMain {
                 Files.delete(temp);
             }
         }
+    }
+
+    // make two int[] arrays and for braodcasting
+    private static int[][] flattenGraph(Graph graph, int nodeCount) {
+        int[] offsets = new int[nodeCount + 1];
+        int total = 0;
+        for (int i = 0; i < nodeCount; i++) {
+            offsets[i] = total;
+            total += graph.getConnected(i).size();
+        }
+        offsets[nodeCount] = total;
+
+        int[] neighbors = new int[total];
+        int position = 0;
+        for (int i = 0; i < nodeCount; i++) {
+            Graph.IntVec v = graph.getConnected(i);
+            for (int j = 0; j < v.size(); j++) {
+                neighbors[position++] = v.get(j);
+            }
+        }
+        return new int[][]{offsets, neighbors};
+    }
+
+    // reverse from flattenGraph
+    private static Graph rebuildGraph(int[] offsets, int[] neighbors, int nodeCount) {
+        Graph g = new Graph();
+
+        for (int i = 0; i < nodeCount; i++) {
+            int start = offsets[i];
+            int end = offsets[i + 1];
+            for (int j = start; j < end; j++) {
+                g.addEdge(i, neighbors[j]);
+            }
+        }
+        return g;
     }
 }

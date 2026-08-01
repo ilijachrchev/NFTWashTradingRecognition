@@ -119,23 +119,6 @@ weight, so all three modes agree.
 | Distributed `-np 6` | 72.2 s |
 | Distributed `-np 8` | 67.7 s |
 
-### Observations
-
-The gap between the two columns is the setup cost, and it stays between 39 and
-47 seconds in every run. Reading and parsing the 5 GB file is sequential in all
-three modes, so it never gets faster no matter how many threads or ranks are
-used. This is why the totals converge even though the BFS times do not.
-
-Parallel mode gives the shortest total runtime. All 16 threads share one graph in
-memory, so it is stored once and there is nothing to broadcast.
-
-Distributed mode scales well on the BFS phase, going from 57.8 s at 2 ranks to
-21.1 s at 8 ranks. It still cannot beat parallel mode here, because rank 0 has to
-read the file and broadcast the graph before any BFS can start. On a real cluster
-each node would read its own share in parallel and that cost would drop.
-
-The distributed BFS at 2 ranks is already much faster than the sequential BFS.
-That is not scaling, it is the data structure. The distributed version walks two
 flat `int[]` arrays, while the sequential one walks a `HashMap` of
 `ArrayList<Integer>`, which costs a hash lookup and an unboxing step per
 neighbour. The flat arrays exist for broadcasting, but they made the traversal

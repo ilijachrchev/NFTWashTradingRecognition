@@ -6,13 +6,11 @@ import java.util.Map;
 public class AddressMapper {
 
     private final Map<String, Integer> addressToId;
-    private final Map<Integer, String> idToAddress;
     private int nextId;
 
 
     public AddressMapper() {
         this.addressToId = new HashMap<>();
-        this.idToAddress = new HashMap<>();
         this.nextId = 0;
     }
 
@@ -34,27 +32,14 @@ public class AddressMapper {
         int newId = nextId++;
 
         addressToId.put(normalized, newId);
-        idToAddress.put(newId, normalized);
         return newId;
-    }
-
-    public String getAddress(int id) {
-        return idToAddress.get(id);
     }
 
     public int size() {
         return nextId;
     }
 
-    public boolean containsAddress(String address) {
-        if (address == null || address.isEmpty()) {
-            return false;
-        }
-        return addressToId.containsKey(address.toLowerCase());
-    }
-
     public void clear() {
         addressToId.clear();
-        idToAddress.clear();
     }
 }

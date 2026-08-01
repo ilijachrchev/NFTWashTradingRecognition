@@ -33,13 +33,15 @@ public class LinkabilityBuilder {
         boolean[] isTrader = new boolean[nodeCount];
 
         for (int id : traderIds) {
-            if (id >= 0 && id < nodeCount) isTrader[id] = true;
+            if (id >= 0 && id < nodeCount) {
+                isTrader[id] = true;
+            }
         }
 
         int[] seen = new int[nodeCount];
         int[] distance = new int[nodeCount];
-        int[] queue = new int[Math.max(16, nodeCount / 64)];
-        int bfsId = 1;
+        int[] queue = new int[nodeCount];
+        int bfsId = 0;
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
             writer.write("from,to,weight\n");
@@ -47,10 +49,10 @@ public class LinkabilityBuilder {
             for (int source : traderIds) {
                 if (source < 0 || source >= nodeCount) continue;
 
+                bfsId++;
                 int head = 0;
                 int tail = 0;
 
-                if (tail == queue.length) queue = grow(queue);
                 queue[tail++] = source;
                 seen[source] = bfsId;
                 distance[source] = 0;
@@ -61,24 +63,23 @@ public class LinkabilityBuilder {
 
                     if (currentDistance >= maxDepth) continue;
 
-                    Graph.IntVec neigh = etnGraph.getConnected(current);
-                    for (int i = 0; i < neigh.size(); i++) {
-                        int nb = neigh.get(i);
+                    List<Integer> neighbours = etnGraph.getConnected(current);
+                    for (int i = 0; i < neighbours.size(); i++) {
+                        int neighbour = neighbours.get(i);
 
-                        if (nb < 0 || nb >= nodeCount) continue;
-                        if (seen[nb] == bfsId) continue;
+                        if (neighbour < 0 || neighbour >= nodeCount) continue;
+                        if (seen[neighbour] == bfsId) continue;
 
-                        int nd = currentDistance + 1;
-                        seen[nb] = bfsId;
-                        distance[nb] = nd;
+                        int nieghbourDistance = currentDistance + 1;
+                        seen[neighbour] = bfsId;
+                        distance[neighbour] = nieghbourDistance;
 
-                        if (tail == queue.length) queue = grow(queue);
-                        queue[tail++] = nb;
+                        queue[tail++] = neighbour;
 
-                        if (isTrader[nb] && nb != source) {
-                            writer.write(source + "," + nb + "," + nd + "\n");
+                        if (isTrader[neighbour] && neighbour != source) {
+                            writer.write(source + "," + neighbour + "," + nieghbourDistance + "\n");
                             totalLinks++;
-                            linksByWeight[nd]++;
+                            linksByWeight[nieghbourDistance]++;
                         }
                     }
                 }
@@ -86,12 +87,6 @@ public class LinkabilityBuilder {
                 processed++;
                 if (processed % 4000 == 0) {
                     Logger.debug("Processed " + processed + " /" + traderIds.size() + " traders, found " + totalLinks + " links!");
-                }
-
-                bfsId++;
-                if (bfsId == Integer.MAX_VALUE) {
-                    for (int i = 0; i < nodeCount; i ++) seen[i] = 0;
-                    bfsId = 1;
                 }
             }
             Logger.debug("Processed " + processed + " /" + traderIds.size() + " traders, found " + totalLinks + " links!");
@@ -103,11 +98,5 @@ public class LinkabilityBuilder {
             distribution.append(" w=").append(i).append(": ").append(linksByWeight[i]);
         }
         Logger.info(distribution.toString());
-    }
-
-    private static int[] grow(int[] array) {
-        int[] newArray = new int[array.length * 2];
-        System.arraycopy(array, 0, newArray, 0, array.length);
-        return newArray;
     }
 }

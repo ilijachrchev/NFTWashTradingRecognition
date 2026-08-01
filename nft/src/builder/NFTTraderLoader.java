@@ -38,7 +38,7 @@ public class NFTTraderLoader {
                 String to = parts[5].trim().toLowerCase(); // 5 is receiver
 
 
-                if (!to.equals(NULL_ADDRESS)) {
+                if (!from.equals(NULL_ADDRESS)) {
                     if (!isBlacklisted(from)) {
                         int fromId = addressMapper.getOrCreateId(from);
                         traderIds.add(fromId);

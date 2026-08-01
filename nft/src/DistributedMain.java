@@ -8,16 +8,18 @@ import utils.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 
 public class DistributedMain {
 
-    private static final int MAX_DEPTH = 2;
-    private static final String ETN_FILE = "";
-    private static final String NFT_FILE = "";
-    private static final String BLACKLIST_FOLDER = "";
-    private static final String OUTPUT_FILE = "";
-    // or through example. 3 data/prog3ETNsample.csv data/boredapeyachtclub.csv blacklist data/output_distributed.csv
+    private static final int MAX_DEPTH = 7;
+    private static final String ETN_FILE = "data/prog3ETNsample.csv";
+    private static final String NFT_FILE = "data/boredapeyachtclub.csv";
+    private static final String BLACKLIST_FOLDER = "blacklist";
+    private static final String OUTPUT_FILE = "data/output_distributed.csv";
+    // 7 data/prog3ETNsample.csv data/boredapeyachtclub.csv blacklist data/output_distributed.csv
+    // -jar $MPJ_HOME$/lib/starter.jar -np 8
 
     public static void main(String[] args) throws IOException {
        String[] userArgs = MPI.Init(args);
@@ -55,17 +57,19 @@ public class DistributedMain {
             Logger.info("=============================================================================");
         }
 
-        Graph graph;
         int[] traders;
         int nodeCount;
+        int[] offsets;
+        int[] neighbours;
 
         if (rank == 0) {
             Set<String> blacklist = BlacklistReader.loadBlacklist(blacklistFolder);
 
             GraphBuilder builder = new GraphBuilder(blacklist);
             builder.buildFromETN(etnFile);
-            graph = builder.getGraph();
-            graph.duplicateEdges();
+            Graph graph = builder.getGraph();
+            graph.removeDuplicateEdges();
+            int edges = (int) graph.edgeCount();
 
             NFTTraderLoader nftLoader = new NFTTraderLoader(blacklist, builder.getAddressMapper());
             Set<Integer> traderSet = nftLoader.loadTraders(nftFile);
@@ -77,20 +81,22 @@ public class DistributedMain {
             blacklist.clear(); // blacklist is also not needed after graph and nft trader loading
 
             int[][] flat =  flattenGraph(graph, nodeCount);
-            int[] offsets = flat[0];
-            int[] neighbors = flat[1];
+            offsets = flat[0];
+            neighbours = flat[1];
+            graph = null;
+            builder = null;
 
             int[] sizes = new int[3];
             sizes[0] = nodeCount;
-            sizes[1] = neighbors.length;
+            sizes[1] = neighbours.length;
             sizes[2] = traders.length;
 
             MPI.COMM_WORLD.Bcast(sizes, 0, 3, MPI.INT, 0);
             MPI.COMM_WORLD.Bcast(offsets, 0, offsets.length, MPI.INT, 0);
-            MPI.COMM_WORLD.Bcast(neighbors, 0, neighbors.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(neighbours, 0, neighbours.length, MPI.INT, 0);
             MPI.COMM_WORLD.Bcast(traders, 0, traders.length, MPI.INT, 0);
 
-            Logger.success("Graph loaded: " + nodeCount + " nodes, " + graph.edgeCount() + " edges, " + traders.length + " traders");
+            Logger.success("Graph loaded: " + nodeCount + " nodes, " + edges + " edges, " + traders.length + " traders");
         } else {
             int[] sizes = new int[3];
             MPI.COMM_WORLD.Bcast(sizes, 0, 3, MPI.INT, 0);
@@ -98,27 +104,25 @@ public class DistributedMain {
             int edgeCount = sizes[1];
             int traderCount = sizes[2];
 
-            int[] offsets = new int[nodeCount + 1];
-            int[] neighbors = new int[edgeCount];
+            offsets = new int[nodeCount + 1];
+            neighbours = new int[edgeCount];
             traders = new int[traderCount];
 
             MPI.COMM_WORLD.Bcast(offsets, 0, offsets.length, MPI.INT, 0);
-            MPI.COMM_WORLD.Bcast(neighbors, 0, neighbors.length, MPI.INT, 0);
+            MPI.COMM_WORLD.Bcast(neighbours, 0, neighbours.length, MPI.INT, 0);
             MPI.COMM_WORLD.Bcast(traders, 0, traders.length, MPI.INT, 0);
 
-            graph = rebuildGraph(offsets, neighbors, nodeCount);
         }
 
         MPI.COMM_WORLD.Barrier();
-        double tStart = MPI.Wtime();
         long tStartMs = System.currentTimeMillis();
 
         String tempFile = outputFile + ".rank" + rank + ".tmp"; // each rank gets its own temp file named by rank
-        DistributedLinkabilityBuilder distributedBuilder = new DistributedLinkabilityBuilder(graph, traders, maxDepth, nodeCount, rank, size);
+        DistributedLinkabilityBuilder distributedBuilder = new DistributedLinkabilityBuilder(
+                offsets, neighbours, traders, maxDepth, nodeCount, rank, size);
         long[] localCounts = distributedBuilder.buildLocalPart(tempFile);
 
         MPI.COMM_WORLD.Barrier();
-        double tEnd = MPI.Wtime();
         long tEndMs = System.currentTimeMillis();
 
         long[] globalCounts = new long[maxDepth + 1];
@@ -180,28 +184,14 @@ public class DistributedMain {
         }
         offsets[nodeCount] = total;
 
-        int[] neighbors = new int[total];
+        int[] neighbours = new int[total];
         int position = 0;
         for (int i = 0; i < nodeCount; i++) {
-            Graph.IntVec v = graph.getConnected(i);
-            for (int j = 0; j < v.size(); j++) {
-                neighbors[position++] = v.get(j);
+            List<Integer> list = graph.getConnected(i);
+            for (int neighbourId : list) {
+                neighbours[position++] = neighbourId;
             }
         }
-        return new int[][]{offsets, neighbors};
-    }
-
-    // reverse from flattenGraph
-    private static Graph rebuildGraph(int[] offsets, int[] neighbors, int nodeCount) {
-        Graph g = new Graph();
-
-        for (int i = 0; i < nodeCount; i++) {
-            int start = offsets[i];
-            int end = offsets[i + 1];
-            for (int j = start; j < end; j++) {
-                g.addEdge(i, neighbors[j]);
-            }
-        }
-        return g;
+        return new int[][]{offsets, neighbours};
     }
 }

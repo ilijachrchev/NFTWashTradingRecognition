@@ -6,18 +6,21 @@ import utils.Logger;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 
 public class DistributedLinkabilityBuilder {
 
-    private final Graph etnGraph;
+    private final int[] offsets;
+    private final int[] neighbours;
     private final int[] allTraders;
     private final int maxDepth;
     private final int nodeCount;
     private final int rank;
     private final int size;
 
-    public DistributedLinkabilityBuilder(Graph etnGraph, int[] allTraders, int maxDepth, int nodeCount, int rank, int size) {
-        this.etnGraph = etnGraph;
+    public DistributedLinkabilityBuilder(int[] offsets, int[] neighbours, int[] allTraders, int maxDepth, int nodeCount, int rank, int size) {
+        this.offsets = offsets;
+        this.neighbours = neighbours;
         this.allTraders = allTraders;
         this.maxDepth = maxDepth;
         this.nodeCount = nodeCount;
@@ -40,7 +43,7 @@ public class DistributedLinkabilityBuilder {
         long localTotal = 0;
         int[] seen  = new int[nodeCount];
         int[] distance = new int[nodeCount];
-        int[] queue = new int[Math.max(16, nodeCount / 64)];
+        int[] queue = new int[nodeCount];
         int bfsId = 1;
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
@@ -49,20 +52,15 @@ public class DistributedLinkabilityBuilder {
             }
 
             int processed = 0;
-            int myShare = 0;
 
             for (int index = rank; index < allTraders.length; index += size) {
-                myShare++;
                 int source = allTraders[index];
                 if (source < 0 || source >= nodeCount) {
                     continue;
                 }
+                bfsId++;
                 int head = 0;
                 int tail = 0;
-
-                if (tail == queue.length) {
-                    queue = grow(queue);
-                }
 
                 queue[tail++] = source;
                 seen[source] = bfsId;
@@ -76,29 +74,27 @@ public class DistributedLinkabilityBuilder {
                         continue;
                     }
 
-                    Graph.IntVec neigh = etnGraph.getConnected(current);
-                    for (int i = 0; i < neigh.size(); i++) {
-                        int neighId = neigh.get(i);
-                        if (neighId < 0 || neighId >= nodeCount) {
+                    int start = offsets[current];
+                    int end = offsets[current+1];
+                    for (int i = start; i < end; i++) {
+                        int neighbourId = neighbours[i];
+                        if (neighbourId < 0 || neighbourId >= nodeCount) {
                             continue;
                         }
 
-                        if (seen[neighId] == bfsId) {
+                        if (seen[neighbourId] == bfsId) {
                             continue;
                         }
 
                         int nextDistance = currentDistance + 1;
-                        seen[neighId] = bfsId;
-                        distance[neighId] = nextDistance;
+                        seen[neighbourId] = bfsId;
+                        distance[neighbourId] = nextDistance;
 
-                        if (tail == queue.length) {
-                            queue = grow(queue);
-                        }
-                        queue[tail++] = neighId;
+                        queue[tail++] = neighbourId;
 
 
-                        if (isTrader[neighId] && neighId != source) {
-                            writer.write(source + "," + neighId + "," + nextDistance + "\n");
+                        if (isTrader[neighbourId] && neighbourId != source) {
+                            writer.write(source + "," + neighbourId + "," + nextDistance + "\n");
 
                             localTotal++;
                             localLinksByWeight[nextDistance]++;
@@ -110,24 +106,10 @@ public class DistributedLinkabilityBuilder {
                 if (processed % 4000 == 0) {
                     Logger.debug("[rank " + rank + "] processed " + processed + ", found " + localTotal + " links." ) ;
                 }
-
-                bfsId++;
-                if (bfsId == Integer.MAX_VALUE) {
-                    for (int i = 0; i < nodeCount; i++) {
-                        seen[i] = 0;
-                    }
-                    bfsId = 1;
-                }
             }
 
-            Logger.info("[rank " + rank + "] finished: " + myShare + " traders processed, " + localTotal + " local links." ) ;
+            Logger.info("[rank " + rank + "] finished: " + processed + " traders processed, " + localTotal + " local links." ) ;
         }
         return localLinksByWeight;
-    }
-
-    private static int[] grow(int[] array) {
-        int[] bigger = new int[array.length * 2];
-        System.arraycopy(array, 0, bigger, 0, array.length);
-        return bigger;
     }
 }
